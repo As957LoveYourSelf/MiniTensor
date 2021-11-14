@@ -81,6 +81,9 @@ class Node(object):
         if isinstance(other, Tensor):
             other.grad_op = "add"
             self.father = Tensor(np.add(self.value, other.value))
+            other.father = self.father
+            self.father.r_child, self.father.l_child = other, self
+            return self.father
         elif isinstance(other, (int, float)):
             self.father = Tensor(np.add(self.value, other))
         elif isinstance(other, np.ndarray):
@@ -89,6 +92,7 @@ class Node(object):
             self.grad_op = None
             other.grad_op = None
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
+        self.father.r_child, self.father.l_child = other, self
         return self.father
 
     def __radd__(self, other):
@@ -97,6 +101,7 @@ class Node(object):
         :param other:
         :return:
         """
+        print("this is a radd")
         self.grad_op = "add"
         if isinstance(other, Tensor):
             other.grad_op = "add"
