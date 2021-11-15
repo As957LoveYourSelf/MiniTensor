@@ -42,7 +42,7 @@ import numpy as np
 
 
 class Node(object):
-    def __init__(self, value, require_grads=False):
+    def __init__(self, value, require_grads):
         """
         In here, We keep the value is the type of numpy.ndarray
         Variables:
@@ -63,12 +63,12 @@ class Node(object):
         if not isinstance(value, np.ndarray):
             value = np.array(value, dtype=np.float64)
         self.value = value
-        self.father = None
         self.grad = None
         self.grad_op = None
         self.is_leafNode = False
         self.l_child = None
         self.r_child = None
+        self.requires_grad = require_grads
 
     # add part
     def __add__(self, other):
@@ -78,20 +78,18 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            self.father = Tensor(np.add(self.value, other.value))
-            self.father.r_child, self.father.l_child = other, self
-            other.father = self.father
-            return self.father
+            temp_tensor = Tensor(np.add(self.value, other.value), self.requires_grad)
         elif isinstance(other, (int, float)):
-            self.father = Tensor(np.add(self.value, other))
+            temp_tensor = Tensor(np.add(self.value, other), self.requires_grad)
         elif isinstance(other, np.ndarray):
-            self.father = Tensor(np.add(self.value, other))
+            temp_tensor = Tensor(np.add(self.value, other), self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        self.father.r_child, self.father.l_child = other, self
-        self.father.grad_op = "add"
+        if self.requires_grad:
+            temp_tensor.r_child, temp_tensor.l_child = other, self
+            temp_tensor.grad_op = "add"
         self.is_leafNode = True
-        return self.father
+        return temp_tensor
 
     def __sub__(self, other):
         """
@@ -100,18 +98,18 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            self.father = Tensor(self.value - other.value)
-            other.father = self.father
+            temp_tensor = Tensor(self.value - other.value, self.requires_grad)
         elif isinstance(other, (int, float)):
-            self.father = Tensor(self.value - other)
+            temp_tensor = Tensor(self.value - other, self.requires_grad)
         elif isinstance(other, np.ndarray):
-            self.father = Tensor(np.subtract(self.value, other))
+            temp_tensor = Tensor(np.subtract(self.value, other), self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        self.father.l_child, self.father.r_child = self, other
-        self.father.grad_op = "sub"
+        if self.requires_grad:
+            temp_tensor.l_child, temp_tensor.r_child = self, other
+            temp_tensor.grad_op = "sub"
         self.is_leafNode = True
-        return self.father
+        return temp_tensor
 
     def __mul__(self, other):
         """
@@ -120,18 +118,18 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            self.father = Tensor(np.multiply(self.value, other.value))
-            other.father = self.father
+            temp_tensor = Tensor(np.multiply(self.value, other.value), self.requires_grad)
         elif isinstance(other, (int, float)):
-            self.father = Tensor(self.value * other)
+            temp_tensor = Tensor(self.value * other, self.requires_grad)
         elif isinstance(other, np.ndarray):
-            self.father = Tensor(np.array(np.multiply(self.value, other)))
+            temp_tensor = Tensor(np.array(np.multiply(self.value, other)), self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        self.father.l_child, self.father.r_child = self, other
-        self.father.grad_op = "mul"
+        if self.requires_grad:
+            temp_tensor.l_child, temp_tensor.r_child = self, other
+            temp_tensor.grad_op = "mul"
         self.is_leafNode = True
-        return self.father
+        return temp_tensor
 
     def __truediv__(self, other):
         """
@@ -140,18 +138,18 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            self.father = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other.value))))
-            other.father = self.father
+            temp_tensor = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other.value))), self.requires_grad)
         elif isinstance(other, (int, float)):
-            self.father = Tensor(self.value / other)
+            temp_tensor = Tensor(self.value / other, self.requires_grad)
         elif isinstance(other, np.ndarray):
-            self.father = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other))))
+            temp_tensor = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other))), self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        self.father.l_child, self.father.r_child = self, other
-        self.father.grad_op = "div"
+        if self.requires_grad:
+            temp_tensor.l_child, temp_tensor.r_child = self, other
+            temp_tensor.grad_op = "truediv"
         self.is_leafNode = True
-        return self.father
+        return temp_tensor
 
     def __floordiv__(self, other):
         """
@@ -168,17 +166,17 @@ class Node(object):
         :param modulo:
         :return:
         """
-        self.father = Tensor(pow(self.value, power, mod=modulo))
-        self.father.grad_op = "pow"
-        self.father.l_child = self
-        return self.father
+        temp_tensor = Tensor(pow(self.value, power, mod=modulo), self.requires_grad)
+        temp_tensor.grad_op = "pow" if self.requires_grad else None
+        temp_tensor.l_child = self
+        return temp_tensor
 
     def __str__(self):
         """
 
         :return:
         """
-        _str = f"\t[MiniTensor]:Tensor({self.value})"
+        _str = f"[MiniTensor]:Tensor({self.value})"
         return _str
 
 
