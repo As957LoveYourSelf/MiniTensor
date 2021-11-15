@@ -46,13 +46,13 @@ class Node(object):
         """
         In here, We keep the value is the type of numpy.ndarray
         Variables:
-        self.value:
-        self.father:
-        self.grad:
-        self.grad_op:
-        self.is_leafNode:
-        self.l_child:
-        self.r_child:
+        value:
+        father:
+        grad:
+        grad_op:
+        is_leafNode:
+        l_child:
+        r_child:
         =========================================================
         :param value:
         :param require_grads:
@@ -77,43 +77,20 @@ class Node(object):
         :param other:
         :return:
         """
-        self.grad_op = "add"
         if isinstance(other, Tensor):
-            other.grad_op = "add"
             self.father = Tensor(np.add(self.value, other.value))
-            other.father = self.father
             self.father.r_child, self.father.l_child = other, self
+            other.father = self.father
             return self.father
         elif isinstance(other, (int, float)):
             self.father = Tensor(np.add(self.value, other))
         elif isinstance(other, np.ndarray):
             self.father = Tensor(np.add(self.value, other))
         else:
-            self.grad_op = None
-            other.grad_op = None
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
         self.father.r_child, self.father.l_child = other, self
-        return self.father
-
-    def __radd__(self, other):
-        """
-
-        :param other:
-        :return:
-        """
-        print("this is a radd")
-        self.grad_op = "add"
-        if isinstance(other, Tensor):
-            other.grad_op = "add"
-            self.father = other.__add__(self.value)
-        elif isinstance(other, (int, float)):
-            self.father = self.__add__(other)
-        elif isinstance(other, np.ndarray):
-            self.father = Tensor(np.array(np.add(other, self.value)))
-        else:
-            self.grad_op = None
-            other.grad_op = None
-            raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
+        self.father.grad_op = "add"
+        self.is_leafNode = True
         return self.father
 
     def __sub__(self, other):
@@ -123,30 +100,19 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            return Tensor(self.value - other.value)
+            self.father = Tensor(self.value - other.value)
+            other.father = self.father
         elif isinstance(other, (int, float)):
-            return Tensor(self.value - other)
+            self.father = Tensor(self.value - other)
         elif isinstance(other, np.ndarray):
-            return Tensor(np.subtract(self.value, other))
+            self.father = Tensor(np.subtract(self.value, other))
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
+        self.father.l_child, self.father.r_child = self, other
+        self.father.grad_op = "sub"
+        self.is_leafNode = True
+        return self.father
 
-    def __rsub__(self, other):
-        """
-
-        :param other:
-        :return:
-        """
-        if isinstance(other, Tensor):
-            return Tensor(other.value - self.value)
-        elif isinstance(other, (int, float)):
-            return Tensor(other - self.value)
-        elif isinstance(other, np.ndarray):
-            return Tensor(np.subtract(other, self.value))
-        else:
-            raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-
-    # mul part
     def __mul__(self, other):
         """
 
@@ -154,59 +120,38 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            return Tensor(np.multiply(self.value, other.value))
+            self.father = Tensor(np.multiply(self.value, other.value))
+            other.father = self.father
         elif isinstance(other, (int, float)):
-            return Tensor(self.value * other)
+            self.father = Tensor(self.value * other)
         elif isinstance(other, np.ndarray):
-            return Tensor(np.array(np.multiply(self.value, other)))
+            self.father = Tensor(np.array(np.multiply(self.value, other)))
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
+        self.father.l_child, self.father.r_child = self, other
+        self.father.grad_op = "mul"
+        self.is_leafNode = True
+        return self.father
 
-    def __rmul__(self, other):
-        """
-
-        :param other:
-        :return:
-        """
-        if isinstance(other, Tensor):
-            return other.__mul__(self.value)
-        elif isinstance(other, (int, float)):
-            return self.__mul__(other)
-        elif isinstance(other, np.ndarray):
-            return Tensor(np.array(np.multiply(other, self.value)))
-        else:
-            raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-
-    # div part
     def __truediv__(self, other):
         """
 
         :param other:
         :return:
         """
-
         if isinstance(other, Tensor):
-            return Tensor(np.array(np.multiply(self.value, other.value.I)))
+            self.father = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other.value))))
+            other.father = self.father
         elif isinstance(other, (int, float)):
-            return Tensor(self.value / other)
+            self.father = Tensor(self.value / other)
         elif isinstance(other, np.ndarray):
-            return Tensor(np.array(np.multiply(self.value, np.linalg.inv(other))))
+            self.father = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other))))
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-
-    def __rdiv__(self, other):
-        """
-
-        :param other:
-        :return:
-        """
-
-        if isinstance(other, Tensor):
-            return other.__truediv__(self.value)
-        elif isinstance(other, (int, float, np.ndarray)):
-            return Tensor(np.array(np.multiply(other, np.linalg.inv(self.value))))
-        else:
-            raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
+        self.father.l_child, self.father.r_child = self, other
+        self.father.grad_op = "div"
+        self.is_leafNode = True
+        return self.father
 
     def __floordiv__(self, other):
         """
@@ -216,15 +161,6 @@ class Node(object):
         """
         raise UserWarning("You should keep your tensor type to be float, instant of int")
 
-    def __rfloordiv__(self, other):
-        """
-
-        :param other:
-        :return:
-        """
-        raise UserWarning("You should keep your tensor type to be float, instant of int")
-
-    # pow part
     def __pow__(self, power, modulo=None):
         """
 
@@ -232,64 +168,88 @@ class Node(object):
         :param modulo:
         :return:
         """
-        return Tensor(pow(self.value, power, mod=modulo))
+        self.father = Tensor(pow(self.value, power, mod=modulo))
+        self.father.grad_op = "pow"
+        self.father.l_child = self
+        return self.father
 
     def __str__(self):
         """
 
         :return:
         """
-        _str = f"[MiniTensor]:Tensor({self.value})"
+        _str = f"\t[MiniTensor]:Tensor({self.value})"
         return _str
 
 
 class Tensor(Node):
-    def __init__(self, value, requires_grad=False):
+    def __init__(self, value, requires_grad=False, name=None):
         super(Tensor, self).__init__(value, require_grads=requires_grad)
-        self.T = self.t()
 
     def __calculate_gradient(self, grad_fn):
         pass
 
     def rank(self):
-        pass
+        return np.linalg.matrix_rank(self.value)
 
     def det(self):
-        pass
+        """
+
+        :return:
+        """
+        return np.linalg.det(self.value)
 
     def inv(self):
-        pass
+        if self.value.shape[-1] != self.value.shape[-2]:
+            raise TypeError("")
+        return Tensor(np.linalg.inv(self.value))
 
     def backward(self):
         pass
 
     def t(self):
-        return self.value.T
+        return Tensor(self.value.T)
 
-    def add(self, other):
-        if isinstance(other, Tensor):
-            return Tensor(np.add(self.value, other.value))
+    def add(self, tensor):
+        if isinstance(tensor, Tensor):
+            return Tensor(np.add(self.value, tensor.value))
+        else:
+            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
 
-    def mul(self):
+    def mul(self, tensor):
+        if isinstance(tensor, Tensor):
+            return Tensor(np.multiply(self.value, tensor.value))
+        else:
+            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+
+    def dot(self, tensor):
+        if isinstance(tensor, Tensor):
+            return Tensor(np.dot(self.value, tensor.value))
+        else:
+            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+
+    def sub(self, tensor):
+        if isinstance(tensor, Tensor):
+            return Tensor(np.subtract(self.value, tensor.value))
+        else:
+            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+
+    def div(self, tensor):
+        if isinstance(tensor, Tensor):
+            return Tensor(np.dot(self.value, np.linalg.inv(tensor.value)))
+        else:
+            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+
+    def reshape(self, resize):
+        """
+
+        :param resize:
+        :return:
+        """
+        return Tensor(np.reshape(self.value, resize))
+
+    def size(self):
         pass
 
-    def dot(self):
-        pass
-
-    def sub(self):
-        pass
-
-    def div(self):
-        pass
-
-    def reshape(self):
-        pass
-
-    def shape(self):
-        pass
-
-    def show_graph(self):
-        pass
-
-    def pow(self):
-        pass
+    def pow(self, exp, mod=None):
+        return Tensor(pow(self.value, exp, mod=mod))
