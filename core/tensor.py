@@ -1,6 +1,6 @@
 """
 Begin DATE: 2021.11.8
-Last Change: 2021.11.12
+Last Change: 2021.11.15
 Author: ZhangChuQi
 =============================================================
 What I do in this code:
@@ -24,7 +24,7 @@ Problem(Solved):
 |   2021.11.12 update: the problem 1,2 have been solved             |
 =====================================================================
 3. Graph built
-
+4. More then one Gradients calculation: Gradients accumulation
 
 -----------------------------------------------------------------------
 
@@ -118,11 +118,18 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            temp_tensor = Tensor(np.multiply(self.value, other.value), self.requires_grad)
+            if other.shape() == self.value.shape:
+                temp_tensor = Tensor(np.multiply(self.value, other.value), self.requires_grad)
+            else:
+                temp_tensor = Tensor(np.dot(self.value, other.value), self.requires_grad)
+
         elif isinstance(other, (int, float)):
             temp_tensor = Tensor(self.value * other, self.requires_grad)
         elif isinstance(other, np.ndarray):
-            temp_tensor = Tensor(np.array(np.multiply(self.value, other)), self.requires_grad)
+            if np.shape(other) == np.shape(self.value):
+                temp_tensor = Tensor(np.multiply(self.value, other), self.requires_grad)
+            else:
+                temp_tensor = Tensor(np.dot(self.value, other), self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
         if self.requires_grad:
@@ -138,11 +145,14 @@ class Node(object):
         :return:
         """
         if isinstance(other, Tensor):
-            temp_tensor = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other.value))), self.requires_grad)
+            if other.shape() == self.value.shape:
+                temp_tensor = Tensor(np.multiply(self.value, np.linalg.inv(other.value)), self.requires_grad)
+            else:
+                temp_tensor = Tensor(np.dot(self.value, np.linalg.inv(other.value)), self.requires_grad)
         elif isinstance(other, (int, float)):
             temp_tensor = Tensor(self.value / other, self.requires_grad)
         elif isinstance(other, np.ndarray):
-            temp_tensor = Tensor(np.array(np.multiply(self.value, np.linalg.inv(other))), self.requires_grad)
+            temp_tensor = Tensor(np.multiply(self.value, np.linalg.inv(other)), self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
         if self.requires_grad:
@@ -176,13 +186,14 @@ class Node(object):
 
         :return:
         """
-        _str = f"[MiniTensor]:Tensor({self.value})"
+        _str = f"[MiniTensor]:Tensor({self.value}{(', ',self.grad_op) if self.grad is not None else ''})"
         return _str
 
 
 class Tensor(Node):
     def __init__(self, value, requires_grad=False, name=None):
         super(Tensor, self).__init__(value, require_grads=requires_grad)
+        self.name = name
 
     def __calculate_gradient(self, grad_fn):
         pass
@@ -246,7 +257,16 @@ class Tensor(Node):
         """
         return Tensor(np.reshape(self.value, resize))
 
-    def size(self):
+    def shape(self):
+        return np.shape(self.value)
+
+    def size(self, dim=None):
+        return np.size(self.value, axis=dim)
+
+    def mean(self):
+        return np.mean(self.value)
+
+    def sum(self):
         pass
 
     def pow(self, exp, mod=None):
