@@ -17,8 +17,7 @@ Problem(Solved):
         <__main__.Tensor object at 0x000001FA334738E0>]
     即无法显示运算后的结果。初步推测和numpy.ndarray内部的运算符
     重载操作有关。
-2. 围绕以上问题，MiniTensor目前只支持Tensor之间以及Tensor与int、float之间的运算操作。
-    但可以将ndarray转化为Tensor
+2. 围绕以上问题，MiniTensor将ndarray转化为Tensor
 
 =====================================================================
 |   2021.11.12 update: the problem 1,2 have been solved             |
@@ -38,7 +37,8 @@ TODO:
 2. add grad calculate program.
 """
 import numpy as np
-from core.graph import nodes_names, nodes_num, graph
+import core.graph as g
+from core.graph import graph
 
 
 class Node(object):
@@ -63,7 +63,8 @@ class Node(object):
         self.value = value
         self.father = []
         self.children = []
-        self.node_name = 'GraphNode' + str(nodes_num)
+        self.node_name = 'GraphNode' + str(g.nodes_num)
+        g.nodes_num += 1
         self.grad = None
         self.grad_op = None
         self.is_leafNode = True
@@ -71,15 +72,15 @@ class Node(object):
         self.requires_grad = require_grads
 
     def __rename(self, new_name):
-        if new_name in nodes_names:
+        if new_name in g.nodes_name:
             raise UserWarning("Your name was in the node name list, we will delete it. We hope try another name next "
                               "time")
         try:
-            nodes_names.remove(self.node_name)
+            g.nodes_name.remove(self.node_name)
             self.node_name = new_name
         except ValueError:
             self.node_name = new_name
-        nodes_names.append(self.node_name)
+        g.nodes_name.append(self.node_name)
 
     def __required_grad_fn(self, other, v):
         if other is None:
@@ -203,14 +204,11 @@ class Tensor(Node):
     include some operations
     """
 
-    def __init__(self, value, requires_grad=True, name=None, *args, **kwargs):
+    def __init__(self, value: (int, list, tuple, np.ndarray), requires_grad=True, name=None, *args, **kwargs):
         super(Tensor, self).__init__(value, require_grads=requires_grad)
         if name is not None:
             assert isinstance(name, str)
             self.__rename(name)
-
-    def __call__(self, n_n=nodes_num, *args, **kwargs):
-        n_n += 1
 
     def rank(self):
         return np.linalg.matrix_rank(self.value)
