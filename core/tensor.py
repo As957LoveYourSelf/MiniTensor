@@ -25,7 +25,6 @@ Problem(Solved):
 =====================================================================
 3. Graph built
 4. More then one Gradients calculation: Gradients accumulation
-
 -----------------------------------------------------------------------
 
 =================================================================
@@ -39,20 +38,19 @@ TODO:
 2. add grad calculate program.
 """
 import numpy as np
+from core.graph import nodes_names, nodes_num, graph
 
 
 class Node(object):
     def __init__(self, value, require_grads):
         """
         In here, We keep the value is the type of numpy.ndarray
-        Variables:
+        include all the node bases
         value:
         father:
         grad:
         grad_op:
         is_leafNode:
-        l_child:
-        r_child:
         =========================================================
         :param value:
         :param require_grads:
@@ -61,21 +59,45 @@ class Node(object):
         if not isinstance(value, (int, list, tuple, np.ndarray)):
             raise TypeError(f"You must apply type where from (int, list, tuple, numpy.ndarray), not {type(value)}")
         if not isinstance(value, np.ndarray):
-            value = np.array(value, dtype=np.float64)
+            value = np.array(value, dtype=np.float16)
         self.value = value
-        self.father = {}
-        self.backward_n = {
-            'add': 0,
-            'sub': 0,
-            'mul': 0,
-            'div': 0
-        }
+        self.father = []
+        self.children = []
+        self.node_name = 'GraphNode' + str(nodes_num)
         self.grad = None
         self.grad_op = None
-        self.is_leafNode = False
-        self.l_child = None
-        self.r_child = None
+        self.is_leafNode = True
+        self.is_root_Node = True
         self.requires_grad = require_grads
+
+    def __rename(self, new_name):
+        if new_name in nodes_names:
+            raise UserWarning("Your name was in the node name list, we will delete it. We hope try another name next "
+                              "time")
+        try:
+            nodes_names.remove(self.node_name)
+            self.node_name = new_name
+        except ValueError:
+            self.node_name = new_name
+        nodes_names.append(self.node_name)
+
+    def __required_grad_fn(self, other, v):
+        if other is None:
+            self.father.append(v)
+        else:
+            graph.add_nodes(key=other.node_name, value=other.father, type='forward')
+            graph.add_nodes(key=self.node_name, value=self.father, type='forward')
+
+            other.father.append(v)
+            other.is_root_Node = False
+
+            v.children.append(other)
+
+        v.children.append(self)
+        v.is_leafNode = False
+
+        self.is_root_Node = False
+        self.father.append(v)
 
     # add part
     def __add__(self, other):
@@ -84,22 +106,15 @@ class Node(object):
         :param other:
         :return:
         """
-        op_name = f"AddBackward{self.backward_n['add']}"
         if isinstance(other, Tensor):
-            self.father[op_name] = Tensor(np.add(self.value, other.value), self.requires_grad)
-            other.backward_n['add'] += 1
-        elif isinstance(other, (int, float)):
-            self.father[op_name] = Tensor(np.add(self.value, other), self.requires_grad)
-        elif isinstance(other, np.ndarray):
-            self.father[op_name] = Tensor(np.add(self.value, other), self.requires_grad)
+            pass
+        elif isinstance(other, (int, float, np.ndarray)):
+            other = Tensor(other, requires_grad=self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        if self.requires_grad:
-            self.father[op_name].r_child, self.father[op_name].l_child = other, self
-            self.father[op_name].grad_op = op_name
-        self.is_leafNode = True
-        self.backward_n['add'] += 1
-        return self.father[op_name]
+        v = Tensor(np.add(self.value, other.value), self.requires_grad)
+        self.__required_grad_fn(other, v)
+        return v
 
     def __sub__(self, other):
         """
@@ -107,22 +122,15 @@ class Node(object):
         :param other:
         :return:
         """
-        op_name = f"AddBackward{self.backward_n['sub']}"
         if isinstance(other, Tensor):
-            self.father[op_name] = Tensor(self.value - other.value, self.requires_grad)
-            other.backward_n['sub'] += 1
-        elif isinstance(other, (int, float)):
-            self.father[op_name] = Tensor(self.value - other, self.requires_grad)
-        elif isinstance(other, np.ndarray):
-            self.father[op_name] = Tensor(np.subtract(self.value, other), self.requires_grad)
+            pass
+        elif isinstance(other, (int, float, np.ndarray)):
+            other = Tensor(other, requires_grad=self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        if self.requires_grad:
-            self.father[op_name].l_child, self.father[op_name].r_child = self, other
-            self.father[op_name].grad_op = op_name
-        self.is_leafNode = True
-        self.backward_n['sub'] += 1
-        return self.father[op_name]
+        v = Tensor(self.value - other.value, self.requires_grad)
+        self.__required_grad_fn(other, v)
+        return v
 
     def __mul__(self, other):
         """
@@ -130,28 +138,18 @@ class Node(object):
         :param other:
         :return:
         """
-        op_name = f"AddBackward{self.backward_n['mul']}"
         if isinstance(other, Tensor):
-            if other.shape() == self.value.shape:
-                self.father[op_name] = Tensor(np.multiply(self.value, other.value), self.requires_grad)
-            else:
-                self.father[op_name] = Tensor(np.dot(self.value, other.value), self.requires_grad)
-            other.backward_n['mul'] += 1
-        elif isinstance(other, (int, float)):
-            self.father[op_name] = Tensor(self.value * other, self.requires_grad)
-        elif isinstance(other, np.ndarray):
-            if np.shape(other) == np.shape(self.value):
-                self.father[op_name] = Tensor(np.multiply(self.value, other), self.requires_grad)
-            else:
-                self.father[op_name] = Tensor(np.dot(self.value, other), self.requires_grad)
+            pass
+        elif isinstance(other, (int, float, np.ndarray)):
+            other = Tensor(other, requires_grad=self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        if self.requires_grad:
-            self.father[op_name].l_child, self.father[op_name].r_child = self, other
-            self.father[op_name].grad_op = op_name
-        self.is_leafNode = True
-        self.backward_n['mul'] += 1
-        return self.father[op_name]
+        if other.shape() == self.value.shape:
+            v = Tensor(np.multiply(self.value, other.value), self.requires_grad)
+        else:
+            v = Tensor(np.dot(self.value, other.value), self.requires_grad)
+        self.__required_grad_fn(other, v)
+        return v
 
     def __truediv__(self, other):
         """
@@ -159,25 +157,18 @@ class Node(object):
         :param other:
         :return:
         """
-        op_name = f"AddBackward{self.backward_n['div']}"
         if isinstance(other, Tensor):
-            if other.shape() == self.value.shape:
-                self.father[op_name] = Tensor(np.multiply(self.value, np.linalg.inv(other.value)), self.requires_grad)
-            else:
-                self.father[op_name] = Tensor(np.dot(self.value, np.linalg.inv(other.value)), self.requires_grad)
-            other.backward_n['div'] += 1
-        elif isinstance(other, (int, float)):
-            self.father[op_name] = Tensor(self.value / other, self.requires_grad)
-        elif isinstance(other, np.ndarray):
-            self.father[op_name] = Tensor(np.multiply(self.value, np.linalg.inv(other)), self.requires_grad)
+            pass
+        elif isinstance(other, (int, float, np.ndarray)):
+            other = Tensor(other, requires_grad=self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        if self.requires_grad:
-            self.father[op_name].l_child, self.father[op_name].r_child = self, other
-            self.father[op_name].grad_op = op_name
-        self.is_leafNode = True
-        self.backward_n['div'] += 1
-        return self.father[op_name]
+        if other.shape() == self.value.shape:
+            v = Tensor(np.multiply(self.value, np.linalg.inv(other.value)), self.requires_grad)
+        else:
+            v = Tensor(np.dot(self.value, np.linalg.inv(other.value)), self.requires_grad)
+        self.__required_grad_fn(other, v)
+        return v
 
     def __floordiv__(self, other):
         """
@@ -194,27 +185,32 @@ class Node(object):
         :param modulo:
         :return:
         """
-        self.father = Tensor(pow(self.value, power, mod=modulo), self.requires_grad)
-        self.father.grad_op = "pow" if self.requires_grad else None
-        self.father.l_child = self
-        return self.father
+        v = Tensor(pow(self.value, power, mod=modulo), self.requires_grad)
+        self.__required_grad_fn(None, v)
+        return v
 
     def __str__(self):
         """
 
         :return:
         """
-        _str = f"[MiniTensor]:Tensor({self.value}{(', ','grad_op='+self.grad_op) if self.grad is not None else ''})"
+        _str = f"[MiniTensor]:Tensor({self.value}{(', ', 'grad_op=' + self.grad_op) if self.grad is not None else ''})"
         return _str
 
 
 class Tensor(Node):
-    def __init__(self, value, requires_grad=False, name=None):
-        super(Tensor, self).__init__(value, require_grads=requires_grad)
-        self.name = name
+    """
+    include some operations
+    """
 
-    def __calculate_gradient(self, grad_fn):
-        pass
+    def __init__(self, value, requires_grad=True, name=None, *args, **kwargs):
+        super(Tensor, self).__init__(value, require_grads=requires_grad)
+        if name is not None:
+            assert isinstance(name, str)
+            self.__rename(name)
+
+    def __call__(self, n_n=nodes_num, *args, **kwargs):
+        n_n += 1
 
     def rank(self):
         return np.linalg.matrix_rank(self.value)
@@ -231,8 +227,12 @@ class Tensor(Node):
             raise TypeError("")
         return Tensor(np.linalg.inv(self.value))
 
+    # backward function
     def backward(self):
-        pass
+        if self.is_root_Node:
+            pass
+        else:
+            raise ValueError("You should make the value be only output")
 
     def t(self):
         return Tensor(self.value.T)

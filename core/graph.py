@@ -3,123 +3,45 @@ Begin Date: 2021.11.15
 Author: ChuQi Zhang
 Last Change Date: 2021.11.18
 """
-import numpy as np
-from core.tensor import Tensor
+
 
 class Graph:
-    def __init__(self, root_node):
+    def __init__(self):
         super(Graph, self).__init__()
-        if isinstance(root_node, Tensor):
-            self.root_node = root_node
-        else:
-            raise TypeError("")
+        self.__graph_nodes = None
+        self.__forward_graph = {}
+        self.__backward_graph = {}
 
     def __call__(self, *args, **kwargs):
         pass
 
-    def gradient_calculation(self, *values, grad_fn=None):
-        """
-
-        :param values:
-        :param grad_fn:
-        :return:
-        """
-        assert (isinstance(grad_fn, str))
-        l_node, r_node, node_grad = values
-        grad_fn = grad_fn.lower()
-        if "add" in grad_fn:
-            self.__add_gradient_calculate(*values)
-        elif "sub" in grad_fn:
-            self.__sub_gradient_calculate(*values)
-        elif "mul" in grad_fn:
-            self.__mul_gradient_calculate(*values)
-        elif "div" in grad_fn:
-            self.__div_gradient_calculate(*values)
-        t_ones = node_grad if node_grad is not None else np.ones_like(node_grad)
-        if isinstance(l_node, Tensor):
-            for node in l_node.father.items():
-                assert (isinstance(node, Tensor))
-                if node.l_child is l_node:
-                    pass
-                elif node.r_child is l_node:
-                    pass
-                else:
-                    raise RuntimeError("")
-        else:
-            return
-
-        if isinstance(r_node, Tensor):
-            pass
-        else:
-            return
-
     def show_graph(self):
         pass
 
-    def __node_ergodic(self, root):
-        """
-        only Tensor class can be ergodic
-        :param root:
-        :return:
-        """
-        if isinstance(root, Tensor):
-            if root.requires_grad:
-                root.grad = Tensor(np.ones_like(root.value))
-            self.gradient_calculation(root.l_child, root.r_child, root.grad, grad_fn=root.grad_op)
-            self.__node_ergodic(root.l_child)
-            self.__node_ergodic(root.r_child)
-            return root
-        return
-
-    def __add_gradient_calculate(self, node):
-        """
-
-        :param l_node:
-        :param r_node:
-        :param node_grad:
-        :return:
-        """
-        pass
+    def add_nodes(self, *args, **kwargs):
+        key = kwargs.get('key')
+        value = kwargs.get('value')
+        _type = kwargs.get('type')
+        assert isinstance(value, list)
+        assert isinstance(key, str)
+        if str.lower(_type) == 'forward':
+            try:
+                self.__forward_graph[key] += [value]
+            except KeyError:
+                self.__forward_graph[key] = [value]
+        elif str.lower(_type) == 'backward':
+            try:
+                self.__backward_graph[key] += [value]
+            except KeyError:
+                self.__backward_graph[key] = [value]
+        else:
+            raise TypeError(f"you should use 'forward' or 'backward', instead {_type}")
 
 
-    def __sub_gradient_calculate(self, l_node, r_node, node_grad):
-        """
+global graph
+global nodes_num
+global nodes_name
 
-        :param l_node:
-        :param r_node:
-        :param node_grad:
-        :return:
-        """
-        pass
-
-    def __mul_gradient_calculate(self, l_node, r_node, node_grad):
-        """
-
-        :param l_node:
-        :param r_node:
-        :param node_grad:
-        :return:
-        """
-        pass
-
-    def __div_gradient_calculate(self, l_node, r_node, node_grad):
-        """
-
-        :param l_node:
-        :param r_node:
-        :param node_grad:
-        :return:
-        """
-        pass
-
-    def __mean_gradient_calculate(self, l_node, r_node, node_grad):
-        """
-
-        :param l_node:
-        :param r_node:
-        :param node_grad:
-        :return:
-        """
-        pass
-
-
+nodes_num = 0
+nodes_names = []
+graph = Graph()
