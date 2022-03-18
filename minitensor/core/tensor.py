@@ -39,8 +39,8 @@ TODO:
 2. add grad calculate program.
 """
 import numpy as np
-import core.graph as g
-from autograd.backward_fns import MulBackWard, AddBackWard, SubBackWard, DivBackWard
+from minitensor import core as g
+from minitensor.autograd.backward_fns import MulBackWard, AddBackWard, SubBackWard, DivBackWard
 
 
 class Node(object):
