@@ -19,13 +19,14 @@ Problem(Solved):
     重载操作有关。
 2. 围绕以上问题，MiniTensor将ndarray转化为Tensor
 3. Graph built
+4. More then one Gradients calculation: Gradients accumulation
+5. check mul operator
 =====================================================================
 |   2021.11.12 update: the problem 1,2 have been solved             |
 =====================================================================
-4. More then one Gradients calculation: Gradients accumulation
-5. check mul operator
 -----------------------------------------------------------------------
-
+2022.3.18:
+Complete the autograd module
 =================================================================
 Usage:
 Every father node number in Tensor must be 2
