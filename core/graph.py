@@ -1,7 +1,12 @@
 """
 Begin Date: 2021.11.15
 Author: ChuQi Zhang
-Last Change Date: 2021.11.18
+Last Change Date: 2022.3.6
+
+=======================================
+Need to do:
+1. Add backward(auto gradient) function
+=======================================
 """
 
 
@@ -9,11 +14,14 @@ class Graph:
     def __init__(self):
         super(Graph, self).__init__()
         self.__forward_graph = {}
-        self.__backward_graph = {}
+        self.root_node = None
+
+    def graph_backward(self):
+        pass
 
     def show_graph(self):
-        print(f"forward graph: {[(k,[i.node_name for i in v]) for (k,v) in self.__forward_graph.items()]}")
-        print(f"backward graph: {[(k,[i.node_name for i in v]) for (k,v) in self.__backward_graph.items()]}")
+        print(f"forward graph: {[(k, [i.node_name for i in v]) for (k, v) in self.__forward_graph.items()]}")
+        print(f"root node: {self.root_node if self.root_node is None else self.root_node.node_name}")
 
     def add_nodes(self, *args, **kwargs):
         key = kwargs.get('key')
@@ -26,11 +34,8 @@ class Graph:
                 self.__forward_graph[key] += value
             except KeyError:
                 self.__forward_graph[key] = value
-        elif str.lower(_type) == 'backward':
-            try:
-                self.__backward_graph[key] += value
-            except KeyError:
-                self.__backward_graph[key] = value
+        elif str.lower(_type) == 'root_node':
+            self.root_node = value
         else:
             raise TypeError(f"you should use 'forward' or 'backward', instead {_type}")
 
@@ -42,6 +47,3 @@ global nodes_name
 nodes_num = 0
 nodes_name = []
 graph = Graph()
-
-
-
