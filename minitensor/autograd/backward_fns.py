@@ -15,9 +15,8 @@ import numpy as np
 
 
 class BackWard:
-    def __init__(self, tensor):
+    def __init__(self):
         super(BackWard, self).__init__()
-        self.value = tensor
 
     @abc.abstractmethod
     def compute_grad_fn(self):
@@ -26,7 +25,8 @@ class BackWard:
 
 class AddBackWard(BackWard):
     def __init__(self, tensor):
-        super(AddBackWard, self).__init__(tensor=tensor)
+        super(AddBackWard, self).__init__()
+        self.value = tensor
 
     def compute_grad_fn(self):
         l_grad, r_grad = np.ones((1, 1), dtype=np.float), np.ones((1, 1), dtype=np.float)
@@ -38,7 +38,8 @@ class AddBackWard(BackWard):
 
 class SubBackWard(BackWard):
     def __init__(self, tensor):
-        super(SubBackWard, self).__init__(tensor=tensor)
+        super(SubBackWard, self).__init__()
+        self.value = tensor
 
     def compute_grad_fn(self):
         l_grad, r_grad = np.ones((1, 1), dtype=np.float), -1 * np.ones((1, 1), dtype=np.float)
@@ -50,7 +51,8 @@ class SubBackWard(BackWard):
 
 class MulBackWard(BackWard):
     def __init__(self, tensor):
-        super(MulBackWard, self).__init__(tensor=tensor)
+        super(MulBackWard, self).__init__()
+        self.value = tensor
 
     def compute_grad_fn(self):
         l_grad, r_grad = np.dot(self.value.grad, self.value.r_children.value.T), np.dot(self.value.l_children.value.T, self.value.grad)
@@ -59,7 +61,8 @@ class MulBackWard(BackWard):
 
 class DivBackWard(BackWard):
     def __init__(self, tensor):
-        super(DivBackWard, self).__init__(tensor=tensor)
+        super(DivBackWard, self).__init__()
+        self.value = tensor
 
     def compute_grad_fn(self):
         pass
@@ -67,7 +70,11 @@ class DivBackWard(BackWard):
 
 class PowBackWard(BackWard):
     def __init__(self, tensor):
-        super(PowBackWard, self).__init__(tensor=tensor)
+        super(PowBackWard, self).__init__()
+        self.value = tensor
 
     def compute_grad_fn(self):
         pass
+
+
+

@@ -40,10 +40,6 @@ class Graph:
             raise TypeError(f"you should use 'forward' or 'backward', instead {_type}")
 
 
-global graph
-global nodes_num
-global nodes_name
-
 nodes_num = 0
 nodes_name = []
 graph = Graph()

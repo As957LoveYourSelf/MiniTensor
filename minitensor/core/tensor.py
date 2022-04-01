@@ -39,7 +39,7 @@ TODO:
 2. add grad calculate program.
 """
 import numpy as np
-from minitensor import core as g
+from minitensor.core import graph as g
 from minitensor.autograd.backward_fns import MulBackWard, AddBackWard, SubBackWard, DivBackWard
 
 
@@ -60,8 +60,10 @@ class Node(object):
         """
         if not isinstance(value, (int, list, tuple, np.ndarray)):
             raise TypeError(f"You must apply type where from (int, list, tuple, numpy.ndarray), not {type(value)}")
+        if isinstance(value, int):
+            value = [value]
         if not isinstance(value, np.ndarray):
-            value = np.array(value, dtype=np.float16)
+            value = np.array(value, np.float16)
         self.value = value
         self.father = []
         self.l_children = None
@@ -71,12 +73,15 @@ class Node(object):
         g.nodes_name.append(self.node_name)
         g.nodes_num += 1
         self.grad_op = grad_fn if require_grads else None
+        self.activation_function = None
         self.is_leafNode = True
         self.is_root_Node = True
         self.requires_grad = require_grads
         self.grad = 1.0 if self.requires_grad else 0
 
     def backward(self):
+        if self.requires_grad is False:
+            raise RuntimeError("Unable compute gradient, try set the requires_grad True.")
         if self.is_leafNode:
             return
         l_grad, r_grad = self.grad_op(self).compute_grad_fn()
@@ -223,7 +228,7 @@ class Node(object):
 
         :return:
         """
-        _str = f"[MiniTensor]:Tensor({str(self.value)}', grad_op=' + {str(self.grad_op) if self.requires_grad else ' '})"
+        _str = f"[MiniTensor]:Tensor({str(self.value)}', {'grad_op = '+str(self.grad_op) if self.requires_grad else ' '})"
         return _str
 
 
