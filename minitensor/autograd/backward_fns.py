@@ -33,7 +33,7 @@ class AddBackWard(BackWard):
         return l_grad, r_grad
 
     def __str__(self):
-        return "AddBackWard_fn"
+        return "AddBackWard"
 
 
 class SubBackWard(BackWard):
@@ -46,7 +46,7 @@ class SubBackWard(BackWard):
         return l_grad, r_grad
 
     def __str__(self):
-        return "SubBackWard_fn"
+        return "SubBackWard"
 
 
 class MulBackWard(BackWard):
@@ -55,8 +55,12 @@ class MulBackWard(BackWard):
         self.value = tensor
 
     def compute_grad_fn(self):
-        l_grad, r_grad = np.dot(self.value.grad, self.value.r_children.value.T), np.dot(self.value.l_children.value.T, self.value.grad)
+        l_grad, r_grad = np.dot(self.value.grad, self.value.r_children.value.T), \
+                         np.dot(self.value.l_children.value.T, self.value.grad)
         return l_grad, r_grad
+
+    def __str__(self):
+        return "MulBackWard"
 
 
 class DivBackWard(BackWard):
@@ -65,7 +69,12 @@ class DivBackWard(BackWard):
         self.value = tensor
 
     def compute_grad_fn(self):
-        pass
+        l_grad, r_grad = np.divide(1.0, self.value.r_children), \
+                         -(np.divide(self.value.l_children, np.power(self.value.r_children, 2)))
+        return l_grad, r_grad
+
+    def __str__(self):
+        return "DivBackWard"
 
 
 class PowBackWard(BackWard):
@@ -74,7 +83,9 @@ class PowBackWard(BackWard):
         self.value = tensor
 
     def compute_grad_fn(self):
-        pass
+        l_grad, r_grad = self.value.r_children * np.power(self.value.l_children, self.value.r_children), None
+        return l_grad, r_grad
 
-
+    def __str__(self):
+        return "PowBackWard"
 

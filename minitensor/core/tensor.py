@@ -40,7 +40,7 @@ TODO:
 """
 import numpy as np
 from minitensor.core import graph as g
-from minitensor.autograd.backward_fns import MulBackWard, AddBackWard, SubBackWard, DivBackWard
+from minitensor.autograd.backward_fns import MulBackWard, AddBackWard, SubBackWard, DivBackWard, PowBackWard
 
 
 class Node(object):
@@ -82,14 +82,14 @@ class Node(object):
     def backward(self):
         if self.requires_grad is False:
             raise RuntimeError("Unable compute gradient, try set the requires_grad True.")
-        if self.is_leafNode:
+        if self.is_leafNode or not isinstance(self, Tensor):
             return
         l_grad, r_grad = self.grad_op(self).compute_grad_fn()
-        if self.l_children is not None:
+        if self.l_children is not None and isinstance(self.l_children, Tensor):
             if self.l_children.requires_grad:
                 self.l_children.grad += l_grad
 
-        if self.r_children is not None:
+        if self.r_children is not None and isinstance(self.r_children, Tensor):
             if self.r_children.requires_grad:
                 self.r_children.grad += r_grad
         self.l_children.backward()
@@ -116,8 +116,9 @@ class Node(object):
         g.nodes_name.append(self.node_name)
 
     def __required_grad_fn(self, other, v):
-        if other is None:
-            self.father.append(v)
+        if not isinstance(other, Tensor):
+            g.graph.add_nodes(key=self.node_name, value=self.father, type='forward')
+            v.r_children = other
         else:
             g.graph.add_nodes(key=other.node_name, value=other.father, type='forward')
             g.graph.add_nodes(key=self.node_name, value=self.father, type='forward')
@@ -197,10 +198,7 @@ class Node(object):
             other = Tensor(other, requires_grad=self.requires_grad)
         else:
             raise TypeError(f"Your operation value must be type from(int, float, Tensor), not {type(other)}")
-        if other.shape() == self.value.shape:
-            v = Tensor(np.divide(self.value, other), self.requires_grad, grad_fn=DivBackWard)
-        else:
-            v = Tensor(np.dot(self.value, np.linalg.inv(other.value)), self.requires_grad, grad_fn=DivBackWard)
+        v = Tensor(np.divide(self.value, other), self.requires_grad, grad_fn=DivBackWard)
         self.__required_grad_fn(other, v)
         return v
 
@@ -219,8 +217,8 @@ class Node(object):
         :param modulo:
         :return:
         """
-        v = Tensor(pow(self.value, power, mod=modulo), self.requires_grad)
-        self.__required_grad_fn(None, v)
+        v = Tensor(pow(self.value, power, mod=modulo), self.requires_grad, grad_fn=PowBackWard)
+        self.__required_grad_fn(power, v)
         return v
 
     def __str__(self):
@@ -228,7 +226,8 @@ class Node(object):
 
         :return:
         """
-        _str = f"[MiniTensor]:Tensor({str(self.value)}', {'grad_op = '+str(self.grad_op) if self.requires_grad else ' '})"
+        _str = f"[MiniTensor]:Tensor({str(self.value)}', " \
+               f"{'grad_op = '+str(self.grad_op) if self.requires_grad else ' '})"
         return _str
 
 
@@ -271,25 +270,25 @@ class Tensor(Node):
         if isinstance(tensor, Tensor):
             return Tensor(np.multiply(self.value, tensor.value))
         else:
-            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+            raise TypeError(f"The other computed value must be Tensor, instead of {type(tensor)}")
 
     def dot(self, tensor):
         if isinstance(tensor, Tensor):
             return Tensor(np.dot(self.value, tensor.value))
         else:
-            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+            raise TypeError(f"The other computed value must be Tensor, instead of {type(tensor)}")
 
     def sub(self, tensor):
         if isinstance(tensor, Tensor):
             return Tensor(np.subtract(self.value, tensor.value))
         else:
-            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+            raise TypeError(f"The other computed value must be Tensor, instead of {type(tensor)}")
 
-    def div(self, tensor):
+    def divide(self, tensor):
         if isinstance(tensor, Tensor):
-            return Tensor(np.dot(self.value, np.linalg.inv(tensor.value)))
+            return Tensor(np.divide(self.value, tensor))
         else:
-            raise TypeError(f"The other compute value must be Tensor, instead of {type(tensor)}")
+            raise TypeError(f"The other computed value must be Tensor, instead of {type(tensor)}")
 
     def reshape(self, resize):
         """
@@ -311,5 +310,9 @@ class Tensor(Node):
     def sum(self):
         return np.sum(self.value)
 
-    def pow(self, exp, mod=None):
-        return Tensor(pow(self.value, exp, mod=mod))
+    def pow(self, power):
+        return Tensor(np.power(self.value, power))
+
+    def exp(self):
+        return Tensor(np.exp(self.value))
+
